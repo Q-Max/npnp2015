@@ -17,6 +17,7 @@
 void str_echo(int sockfd, struct sockaddr_in cliaddr);
 void sig_child(int signo);
 char welMsg[] = "[C]hange directory [L]ist [U]pload [D]ownload [E]xit\n";
+char listMsg[] = "End with '*#' means it's a executable file, with '/' means it's a directory\n";
 char bin[] = "/bin/ls";
 char cwd[1024];
 int main(int argc, char **argv)
@@ -81,7 +82,7 @@ again:
 		if(!strcmp(buf,"ready")){
 			printf("%s\n",buf);
 			printf("client from %s, port %hu ready\n",inet_ntop(AF_INET, &( cliaddr.sin_addr), dst, INET_ADDRSTRLEN),ntohs(cliaddr.sin_port));
-			write(sockfd, welMsg, strlen(welMsg));
+			write(sockfd, welMsg, strlen(welMsg)+1);
 			continue;
 		}
 		else if(!strcmp(buf,"L\n")){
@@ -96,19 +97,44 @@ again:
 				printf("Failed to run command\n" );
 				exit(1);
 			}
-
+			write(sockfd, listMsg, strlen(listMsg)+1);
 			/* Read the output a line at a time - output it. */
 			while (fgets(path, sizeof(path)-1, fp) != NULL) {
-				write(sockfd, path, strlen(path));
+				printf("%s,%lu",path,strlen(path));
+				write(sockfd, path, strlen(path)+1);
+				if( (n = read(sockfd, buf, MAXLINE))<0){
+					printf("str_echo: read error\n");
+					printf("connection from %s, port %hu closed\n",inet_ntop(AF_INET, &( cliaddr.sin_addr), dst, INET_ADDRSTRLEN),ntohs(cliaddr.sin_port));
+					return;
+				}
+
 			}
 
 			/* close */
 			pclose(fp);
-			write(sockfd, welMsg, strlen(welMsg));
+			write(sockfd, "end", strlen("end")+1);
 			continue;
 		}
-		printf("get string %s\n",buf);
-		write(sockfd, buf, n);
+		else if(!strcmp(buf,"C\n")){
+			//to do
+
+			write(sockfd, "end", strlen("end")+1);
+			continue;
+		}
+		else if(!strcmp(buf,"D\n")){
+			//to do
+
+			write(sockfd, "end", strlen("end")+1);
+			continue;
+		}
+		else if(!strcmp(buf,"U\n")){
+			//to do
+
+			write(sockfd, "end", strlen("end")+1);
+			continue;
+		}
+		else
+			write(sockfd, welMsg, strlen(welMsg)+1);
 	}
 	if (n < 0 && errno == EINTR) /* interrupted by a signal before any data was read*/
 		goto again; //ignore EINTR
