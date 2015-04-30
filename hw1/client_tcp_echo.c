@@ -5,6 +5,8 @@
 #include <arpa/inet.h> /* ipv4*/
 #include <netinet/in.h> /* htonl ntohl htons ntohs*/
 #include <sys/wait.h>
+#include <sys/stat.h> /* st cwd*/
+#include <sys/types.h>
 
 #define MAXLINE 4096
 
@@ -61,13 +63,12 @@ void str_cli(FILE *fp, int sockfd)
 	}	
 	fputs(recvline, stdout);
 	while (fgets(sendline, MAXLINE, fp) != NULL) {
-		printf("send string %s\n",sendline);
-		write(sockfd, sendline, strlen (sendline));
+		//printf("send string %s.%d",sendline,strlen(sendline));
+		write(sockfd, sendline, strlen (sendline)+1);
 		if (read(sockfd, recvline, MAXLINE) == 0) {
 			printf("str_cli: server terminated prematurely\n");
 			exit(0);
 		}
-		printf("get string ");
 		fputs(recvline, stdout);
 	}
 	printf("send string EOF\n");

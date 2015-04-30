@@ -14,10 +14,11 @@
 #define LISTENQ 256
 #define MAXLINE 2048
 
-
- void str_echo(int sockfd, struct sockaddr_in cliaddr);
- void sig_child(int signo);
+void str_echo(int sockfd, struct sockaddr_in cliaddr);
+void sig_child(int signo);
 char welMsg[] = "[C]hange directory [L]ist [U]pload [D]ownload [E]xit\n";
+char bin[] = "/bin/ls";
+char cwd[1024];
 int main(int argc, char **argv)
 {
 	if (argc != 2){
@@ -25,7 +26,7 @@ int main(int argc, char **argv)
 		exit(0);
 	}
 	int SERV_PORT=atoi(argv[1]);
-	char cwd[1024];
+
 	if (getcwd(cwd, sizeof(cwd)) != NULL){
 		strcat(cwd,"/Upload");
 		fprintf(stdout, "Current working dir: %s\n", cwd);
@@ -68,24 +69,53 @@ int main(int argc, char **argv)
  }
  void str_echo(int sockfd, struct sockaddr_in cliaddr)
 {
-ssize_t n;
-char buf[MAXLINE]; //MAXLINE is defined by user
-char dst[100];
+	FILE *fp;
+	ssize_t n;
+	char buf[MAXLINE]; //MAXLINE is defined by user
+	char dst[100];
+	char path[1035];
+
 again:
-while ( (n = read(sockfd, buf, MAXLINE)) > 0) {
-	if(!strcmp(buf,"ready")){
-		printf("client from %s, port %hu ready\n",inet_ntop(AF_INET, &( cliaddr.sin_addr), dst, INET_ADDRSTRLEN),ntohs(cliaddr.sin_port));
-		write(sockfd, welMsg, strlen(welMsg));
-		continue;
+	while ( (n = read(sockfd, buf, MAXLINE)) > 0) {
+		printf("%sstrlen : %d\n",buf,strlen(buf));
+		if(!strcmp(buf,"ready")){
+			printf("%s\n",buf);
+			printf("client from %s, port %hu ready\n",inet_ntop(AF_INET, &( cliaddr.sin_addr), dst, INET_ADDRSTRLEN),ntohs(cliaddr.sin_port));
+			write(sockfd, welMsg, strlen(welMsg));
+			continue;
+		}
+		else if(!strcmp(buf,"L\n")){
+			strcpy(dst, bin);
+			dst[strlen(dst)+1]='\0';
+			dst[strlen(dst)] = ' ';
+			strcat(dst, cwd);
+			strcat(dst, " -F");
+			puts(dst);
+			fp = popen(dst, "r");
+			if (fp == NULL) {
+				printf("Failed to run command\n" );
+				exit(1);
+			}
+
+			/* Read the output a line at a time - output it. */
+			while (fgets(path, sizeof(path)-1, fp) != NULL) {
+				write(sockfd, path, strlen(path));
+			}
+
+			/* close */
+			pclose(fp);
+			write(sockfd, welMsg, strlen(welMsg));
+			continue;
+		}
+		printf("get string %s\n",buf);
+		write(sockfd, buf, n);
 	}
-	printf("get string %s\n",buf);
-	write(sockfd, buf, n);
-}
-if (n < 0 && errno == EINTR) /* interrupted by a signal before any data was read*/
-	goto again; //ignore EINTR
-else if (n < 0)
-	printf("str_echo: read error\n");
-	printf("connection from %s, port %hu closed\n",inet_ntop(AF_INET, &( cliaddr.sin_addr), dst, INET_ADDRSTRLEN),ntohs(cliaddr.sin_port));
+	if (n < 0 && errno == EINTR) /* interrupted by a signal before any data was read*/
+		goto again; //ignore EINTR
+	else if (n < 0)	{
+		printf("str_echo: read error\n");
+		printf("connection from %s, port %hu closed\n",inet_ntop(AF_INET, &( cliaddr.sin_addr), dst, INET_ADDRSTRLEN),ntohs(cliaddr.sin_port));
+	}
 }
 void sig_child(int signo){
 	pid_t pid;
