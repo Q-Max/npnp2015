@@ -65,11 +65,18 @@ void str_cli(FILE *fp, int sockfd)
 	while (fgets(sendline, MAXLINE, fp) != NULL) {
 		//printf("send string %s.%d",sendline,strlen(sendline));
 		write(sockfd, sendline, strlen (sendline)+1);
-		if (read(sockfd, recvline, MAXLINE) == 0) {
-			printf("str_cli: server terminated prematurely\n");
-			exit(0);
+		if(!strcmp(sendline,"L\n")){
+			while(true){
+				if (read(sockfd, recvline, MAXLINE) == 0) {
+					printf("str_cli: server terminated prematurely\n");
+					exit(0);
+				}
+				else if(!strcmp(recvline,"end")
+					break;
+				fputs(recvline, stdout);
+			}
 		}
-		fputs(recvline, stdout);
+		
 	}
 	printf("send string EOF\n");
 	sendline[0]=EOF;

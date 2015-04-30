@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <strings.h> /* bzero()*/
+#include <string.h> /* bzero()*/
 #include <sys/socket.h> /* socket*/
 #include <arpa/inet.h> /* ipv4*/
 #include <netinet/in.h> /* htonl ntohl htons ntohs*/
@@ -77,7 +77,7 @@ int main(int argc, char **argv)
 
 again:
 	while ( (n = read(sockfd, buf, MAXLINE)) > 0) {
-		printf("%sstrlen : %d\n",buf,strlen(buf));
+		printf("%sstrlen : %lu\n",buf,strlen(buf));
 		if(!strcmp(buf,"ready")){
 			printf("%s\n",buf);
 			printf("client from %s, port %hu ready\n",inet_ntop(AF_INET, &( cliaddr.sin_addr), dst, INET_ADDRSTRLEN),ntohs(cliaddr.sin_port));
