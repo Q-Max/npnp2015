@@ -21,7 +21,7 @@ char welMsg[] = "[C]hange directory [L]ist [U]pload [D]ownload [E]xit\n";
 int main(int argc, char **argv)
 {
 	if (argc != 2){
-		printf("usage: server <Port>");
+		printf("usage: server <Port>\n");
 		exit(0);
 	}
 	int SERV_PORT=atoi(argv[1]);
@@ -73,7 +73,7 @@ char buf[MAXLINE]; //MAXLINE is defined by user
 char dst[100];
 again:
 while ( (n = read(sockfd, buf, MAXLINE)) > 0) {
-	if(!strcmp(n,"ready")){
+	if(!strcmp(buf,"ready")){
 		printf("client from %s, port %hu ready\n",inet_ntop(AF_INET, &( cliaddr.sin_addr), dst, INET_ADDRSTRLEN),ntohs(cliaddr.sin_port));
 		write(sockfd, welMsg, strlen(welMsg));
 		continue;

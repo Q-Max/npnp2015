@@ -6,8 +6,9 @@
 #include <netinet/in.h> /* htonl ntohl htons ntohs*/
 #include <sys/wait.h>
 
-
 #define MAXLINE 4096
+
+char cwd[1024];
 
 void str_cli(FILE *fp, int sockfd);
 int main(int argc, char **argv)
@@ -16,12 +17,24 @@ int main(int argc, char **argv)
 	int sockfd[5];
 	int childpid;
 	struct sockaddr_in servaddr;
-	int SERV_PORT;
+	
 	if (argc != 3){
+
 		printf("usage: tcpcli <IPaddress> <Port>");
 		exit(0);
 	}
-	SERV_PORT=atoi(argv[2]);
+	int SERV_PORT=atoi(argv[2]);
+	
+	if (getcwd(cwd, sizeof(cwd)) != NULL){
+		strcat(cwd,"/Download");
+		fprintf(stdout, "Current working dir: %s\n", cwd);
+	}
+	else
+		perror("getcwd() error");
+	struct stat st = {0};
+	if(stat(cwd, &st)==-1){
+		mkdir(cwd, 0700);
+	}
 	for(i=0;i<1;i++)
 	{		
 		sockfd[i] = socket(AF_INET, SOCK_STREAM, 0);
@@ -32,7 +45,9 @@ int main(int argc, char **argv)
 		connect(sockfd[i], (__CONST_SOCKADDR_ARG) &servaddr, sizeof(servaddr));		
 		
 	}
-	str_cli(stdin, sockfd[4]); /* do it all */		
+
+	str_cli(stdin, sockfd[i-1]); /* do it all */		
+	puts("QQ");
 	exit(0);
 }
 
@@ -41,7 +56,7 @@ void str_cli(FILE *fp, int sockfd)
 	write(sockfd, "ready", strlen ("ready"));
 	char sendline[MAXLINE], recvline[MAXLINE];
 	if (read(sockfd, recvline, MAXLINE) == 0) {
-		printf("str_cli: server terminated prematurely");
+		printf("str_cli: server terminated prematurely\n");
 		exit(0);
 	}	
 	fputs(recvline, stdout);
@@ -49,7 +64,7 @@ void str_cli(FILE *fp, int sockfd)
 		printf("send string %s\n",sendline);
 		write(sockfd, sendline, strlen (sendline));
 		if (read(sockfd, recvline, MAXLINE) == 0) {
-			printf("str_cli: server terminated prematurely");
+			printf("str_cli: server terminated prematurely\n");
 			exit(0);
 		}
 		printf("get string ");
