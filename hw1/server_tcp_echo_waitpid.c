@@ -233,7 +233,7 @@ again:
 						printf("connection from %s, port %hu closed\n",inet_ntop(AF_INET, &( cliaddr.sin_addr), dst, INET_ADDRSTRLEN),ntohs(cliaddr.sin_port));
 						return;
 					}
-					fread(buf,2048,1,fp);
+					fread(buf,MAXLINE,1,fp);
 					for(l=0;l<k%MAXLINE;l++)putchar(buf[l]);
 					write(sockfd, buf, k%MAXLINE);
 					if( (n = read(sockfd, buf, MAXLINE))<0){
@@ -246,7 +246,7 @@ again:
 					break;
 				}
 				else {
-					fread(buf,2048,1,fp);	
+					fread(buf,MAXLINE,1,fp);	
 					write(sockfd, buf, MAXLINE);
 					if( (n = read(sockfd, buf, MAXLINE))<0){
 						printf("str_echo: read error\n");
@@ -260,12 +260,59 @@ again:
 		}
 		else if(!strcmp(buf,"U\n")){
 			//to do
+			write(sockfd, "ready", strlen("ready")+1);
+			if( (n = read(sockfd, buf, MAXLINE))<0){
+				printf("str_echo: read error\n");
+				printf("connection from %s, port %hu closed\n",inet_ntop(AF_INET, &( cliaddr.sin_addr), dst, INET_ADDRSTRLEN),ntohs(cliaddr.sin_port));
+				return;
+			}
+			if(!strcmp(buf,"error")){
+				goto again;
+			}
+			strcpy(process_cwd,child_cwd);
+			process_cwd[strlen(process_cwd)+1]='\0';
+			process_cwd[strlen(process_cwd)] = '/';
+			strcat(process_cwd,buf);
+			if(!(fp=fopen(process_cwd,"w"))){
+				write(sockfd, "fperr", strlen("fperr")+1);
+				goto again;
+			}
+			write(sockfd, "ok", strlen("ok")+1);
+			while(1){
+				if (read(sockfd, buf, MAXLINE) == 0) {
+					printf("str_cli: server terminated prematurely\n");
+					exit(0);
+				}
+				if(!strcmp(buf,"last")){
+					puts("QQ");
+					write(sockfd, " ", 2);
+					if (read(sockfd, buf, MAXLINE) == 0) {
+						printf("str_cli: server terminated prematurely\n");
+						exit(0);
+					}
+					i = atoi(buf);
+					puts(buf);
+					write(sockfd, " ", 2);
 
-			write(sockfd, "end", strlen("end")+1);
+					if (read(sockfd, buf, MAXLINE) == 0) {
+						printf("str_cli: server terminated prematurely\n");
+						exit(0);
+					}
+					puts(buf);
+					fwrite(buf, i, 1, fp);
+					fclose(fp);
+					//puts(buf);
+					write(sockfd, "end", strlen("end")+1);
+					break;
+				}
+				fwrite(buf, MAXLINE, 1, fp);
+				write(sockfd, " ", 2);
+				// to do
+			}
 			continue;
 		}
 		else
-			write(sockfd, welMsg, strlen(welMsg)+1);
+			goto again;
 	}
 	if (n < 0 && errno == EINTR) /* interrupted by a signal before any data was read*/
 		goto again; //ignore EINTR

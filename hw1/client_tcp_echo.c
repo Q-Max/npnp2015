@@ -7,6 +7,7 @@
 #include <sys/wait.h>
 #include <sys/stat.h> /* st cwd*/
 #include <sys/types.h>
+#include <math.h> /* ceil*/
 
 #define MAXLINE 2048
 
@@ -58,7 +59,7 @@ void str_cli(FILE *fp, int sockfd)
 	char tmp[1024];
 
 	FILE *fp2;
-	int i,j,k;
+	int i,j,k,l;
 	char sendline[MAXLINE], recvline[MAXLINE];
 again:
 
@@ -114,6 +115,65 @@ again:
 			if (read(sockfd, recvline, MAXLINE) == 0) {/* read ready signal*/
 				printf("str_cli: server terminated prematurely\n");
 				exit(0);
+			}
+			puts("Enter file directory:");
+			fgets(sendline, MAXLINE, fp) ;
+			sendline[strlen(sendline)-1]='\0';
+			if((fp2 = fopen(sendline,"r"))==NULL){
+				write(sockfd, "error", strlen("error")+1);
+				goto again;
+			}
+			else{
+				write(sockfd, sendline, strlen(sendline)+1);
+				if (read(sockfd, recvline, MAXLINE) == 0) {/* read ready signal*/
+					printf("str_cli: server terminated prematurely\n");
+					exit(0);
+				}
+				if(!strcmp(recvline,"fperr")){
+					goto again;
+				}
+				fseek(fp2, 0L, SEEK_END);
+				k=ftell(fp);
+				fseek(fp2, 0L, SEEK_SET);
+				j=(int)(ceil((double)k/(double)MAXLINE));
+				i=0;
+				//printf("%d,%d,%s\n",k,j,process_cwd);
+				while (!feof(fp2)) {
+					
+					i++;
+					printf("%d\n",i);
+					if(i==j){
+						write(sockfd,"last", 5);
+						if (read(sockfd, recvline, MAXLINE) == 0) {/* read ready signal*/
+							printf("str_cli: server terminated prematurely\n");
+							exit(0);
+						}
+						sprintf(tmp,"%d",k%MAXLINE);
+						write(sockfd, tmp, strlen(tmp)+1);
+						if (read(sockfd, recvline, MAXLINE) == 0) {/* read ready signal*/
+							printf("str_cli: server terminated prematurely\n");
+							exit(0);
+						}
+						fread(sendline,MAXLINE,1,fp2);
+						for(l=0;l<k%MAXLINE;l++)putchar(sendline[l]);
+						write(sockfd, sendline, k%MAXLINE);
+						if (read(sockfd, recvline, MAXLINE) == 0) {/* read ready signal*/
+							printf("str_cli: server terminated prematurely\n");
+							exit(0);
+						}
+						fclose(fp2);
+						puts("qq");
+						break;
+					}
+					else {
+						fread(sendline,MAXLINE,1,fp2);	
+						write(sockfd, sendline, MAXLINE);
+						if (read(sockfd, recvline, MAXLINE) == 0) {/* read ready signal*/
+							printf("str_cli: server terminated prematurely\n");
+							exit(0);
+						}
+					}
+				}
 			}
 			if(!strcmp(recvline,"end")){
 				goto again;
@@ -181,7 +241,8 @@ again:
 			if(!strcmp(recvline,"end")){
 					goto again;
 			}
-		}		
+		}
+		else goto again;
 	}
 	printf("send string EOF\n");
 	sendline[0]=EOF;
