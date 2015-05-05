@@ -11,6 +11,7 @@
 #include <sys/stat.h>/* mkdir */
 #include <sys/types.h>/* mkdir */
 #include <math.h> /* ceil*/
+#include <dirent.h> /* DIR*/
 
 #define LISTENQ 256
 #define MAXLINE 2048
@@ -18,7 +19,7 @@
 void str_echo(int sockfd, struct sockaddr_in cliaddr);
 void sig_child(int signo);
 char welMsg[] = "[C]hange directory [L]ist [U]pload [D]ownload [E]xit\n";
-char listMsg[] = "End with '*#' means it's a executable file, with '/' means it's a directory\n";
+char listMsg[] = "End with '*' means it's a executable file, with '/' means it's a directory\n";
 char bin[] = "/bin/ls";
 char cwd[1024];
 int main(int argc, char **argv)
@@ -77,8 +78,9 @@ int main(int argc, char **argv)
 	char dst[100];
 	char path[1035];
 	char child_cwd[1024];
-	char down_process[1024];
+	char process_cwd[1024];
 	int i,j,k,l;
+	DIR* dir ;
 	strcpy(child_cwd,cwd);
 
 again:
@@ -103,6 +105,11 @@ again:
 				exit(1);
 			}
 			write(sockfd, listMsg, strlen(listMsg)+1);
+			if( (n = read(sockfd, buf, MAXLINE))<0){
+				printf("str_echo: read error\n");
+				printf("connection from %s, port %hu closed\n",inet_ntop(AF_INET, &( cliaddr.sin_addr), dst, INET_ADDRSTRLEN),ntohs(cliaddr.sin_port));
+				return;
+			}
 			/* Read the output a line at a time - output it. */
 			while ((fgets(path, sizeof(path)-1, fp)) != NULL) {
 				printf("%s,%lu",path,strlen(path));
@@ -120,21 +127,69 @@ again:
 		}
 		else if(!strcmp(buf,"C\n")){
 			//to do
-			// //DIR* dir = opendir("mydir");
-			// //if (dir)
-			// //{
-			// 	/* Directory exists. */
-			// 	closedir(dir);
-			// }
-			// else if (ENOENT == errno)
-			// {
-			// 	/* Directory does not exist. */
-			// }
-			// else
-			// {
-			// 	/* opendir() failed for some other reason. */
-			// }
-
+			write(sockfd, "ready", strlen("ready")+1);
+			if( (n = read(sockfd, buf, MAXLINE))<0){
+				printf("str_echo: read error\n");
+				printf("connection from %s, port %hu closed\n",inet_ntop(AF_INET, &( cliaddr.sin_addr), dst, INET_ADDRSTRLEN),ntohs(cliaddr.sin_port));
+				return;
+			}
+			if(!strcmp(buf,"..")){
+				if(!strcmp(child_cwd,cwd)){ /* Reject for security*/
+					write(sockfd, "Reject", strlen("Reject")+1);
+					if( (n = read(sockfd, buf, MAXLINE))<0){
+						printf("str_echo: read error\n");
+						printf("connection from %s, port %hu closed\n",inet_ntop(AF_INET, &( cliaddr.sin_addr), dst, INET_ADDRSTRLEN),ntohs(cliaddr.sin_port));
+						return;
+					}
+					write(sockfd, "end", strlen("end")+1);
+					continue;
+				}
+				else{					
+					for(i=strlen(child_cwd);i>=0;i--){
+						if(child_cwd[i]=='/'){
+							child_cwd[i]='\0';
+							break;
+						}
+					}
+					write(sockfd, "Success", strlen("Success")+1);
+					if( (n = read(sockfd, buf, MAXLINE))<0){
+						printf("str_echo: read error\n");
+						printf("connection from %s, port %hu closed\n",inet_ntop(AF_INET, &( cliaddr.sin_addr), dst, INET_ADDRSTRLEN),ntohs(cliaddr.sin_port));
+						return;
+					}
+					write(sockfd, "end", strlen("end")+1);
+					continue;
+				}
+			}
+			else{
+				strcpy(process_cwd,child_cwd);
+				strcat(process_cwd,"/");
+				strcat(process_cwd,buf);
+			}
+			
+			dir = opendir(process_cwd);
+			if (dir)
+			{
+				/* Directory exists. */
+				closedir(dir);
+				strcpy(child_cwd,process_cwd);
+				write(sockfd, "Success", strlen("Success")+1);
+			}
+			else if (ENOENT == errno)
+			{
+				write(sockfd, "Not exists", strlen("Not exists")+1);
+				/* Directory does not exist. */
+			}
+			else
+			{
+				write(sockfd, "Error", strlen("Error")+1);
+				/* opendir() failed for some other reason. */
+			}
+			if( (n = read(sockfd, buf, MAXLINE))<0){
+				printf("str_echo: read error\n");
+				printf("connection from %s, port %hu closed\n",inet_ntop(AF_INET, &( cliaddr.sin_addr), dst, INET_ADDRSTRLEN),ntohs(cliaddr.sin_port));
+				return;
+			}
 			write(sockfd, "end", strlen("end")+1);
 			continue;
 		}
@@ -146,11 +201,11 @@ again:
 				printf("connection from %s, port %hu closed\n",inet_ntop(AF_INET, &( cliaddr.sin_addr), dst, INET_ADDRSTRLEN),ntohs(cliaddr.sin_port));
 				return;
 			}
-			strcpy(down_process,child_cwd);
-			down_process[strlen(down_process)+1]='\0';
-			down_process[strlen(down_process)] = '/';
-			strcat(down_process,buf);
-			if(!(fp=fopen(down_process,"r"))){
+			strcpy(process_cwd,child_cwd);
+			process_cwd[strlen(process_cwd)+1]='\0';
+			process_cwd[strlen(process_cwd)] = '/';
+			strcat(process_cwd,buf);
+			if(!(fp=fopen(process_cwd,"r"))){
 				write(sockfd, "fperr", strlen("fperr")+1);
 				goto again;
 			}
@@ -159,7 +214,7 @@ again:
 			fseek(fp, 0L, SEEK_SET);
 			j=(int)(ceil((double)k/(double)MAXLINE));
 			i=0;
-			printf("%d,%d,%s\n",k,j,down_process);
+			printf("%d,%d,%s\n",k,j,process_cwd);
 			while (!feof(fp)) {
 				
 				i++;

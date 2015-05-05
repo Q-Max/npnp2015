@@ -59,10 +59,10 @@ void str_cli(FILE *fp, int sockfd)
 
 	FILE *fp2;
 	int i,j,k;
+	char sendline[MAXLINE], recvline[MAXLINE];
 again:
 
-	write(sockfd, "ready", strlen ("ready")+1);
-	char sendline[MAXLINE], recvline[MAXLINE];
+	write(sockfd, "ready", strlen ("ready")+1);	
 	if (read(sockfd, recvline, MAXLINE) == 0) {
 		printf("str_cli: server terminated prematurely\n");
 		exit(0);
@@ -76,33 +76,54 @@ again:
 				if (read(sockfd, recvline, MAXLINE) == 0) {
 					printf("str_cli: server terminated prematurely\n");
 					exit(0);
-				}
-				else if(!strcmp(recvline,"end")){
+				}				
+				if(!strcmp(recvline,"end")){
 					goto again;
 				}
 				fputs(recvline, stdout);
-				write(sockfd, " ", 1);
+				write(sockfd, " ", 1);			
 			}
 		}
 		else if(!strcmp(sendline,"E\n"))break;
 		else if(!strcmp(sendline,"C\n")){
 			//to do
+			if (read(sockfd, recvline, MAXLINE) == 0) {/* read ready signal*/
+				printf("str_cli: server terminated prematurely\n");
+				exit(0);
+			}
+			puts("Enter directory name :");
+			fgets(sendline, MAXLINE, fp) ;
+			sendline[strlen(sendline)-1]='\0';
+			write(sockfd, sendline, strlen (sendline)+1);
+			if (read(sockfd, recvline, MAXLINE) == 0) {/* read ready signal*/
+					printf("str_cli: server terminated prematurely\n");
+					exit(0);
+			}
+			puts(recvline);
+			write(sockfd, " ", 2);
+			if (read(sockfd, recvline, MAXLINE) == 0) {/* read ready signal*/
+					printf("str_cli: server terminated prematurely\n");
+					exit(0);
+			}
 			if(!strcmp(recvline,"end")){
-					goto again;
-				}				
+				goto again;
+			}				
 		}
 		else if(!strcmp(sendline,"U\n")){
 			// to do
-
+			if (read(sockfd, recvline, MAXLINE) == 0) {/* read ready signal*/
+				printf("str_cli: server terminated prematurely\n");
+				exit(0);
+			}
 			if(!strcmp(recvline,"end")){
-					goto again;
-				}				
+				goto again;
+			}				
 		}
 		else if(!strcmp(sendline,"D\n")){
 			// to do
 			if (read(sockfd, recvline, MAXLINE) == 0) {/* read ready signal*/
-					printf("str_cli: server terminated prematurely\n");
-					exit(0);
+				printf("str_cli: server terminated prematurely\n");
+				exit(0);
 			}
 			puts("Enter file name :");
 			fgets(sendline, MAXLINE, fp) ;
