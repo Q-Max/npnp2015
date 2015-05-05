@@ -8,7 +8,7 @@
 #include <sys/stat.h> /* st cwd*/
 #include <sys/types.h>
 
-#define MAXLINE 4096
+#define MAXLINE 2048
 
 char cwd[1024];
 
@@ -28,7 +28,7 @@ int main(int argc, char **argv)
 	int SERV_PORT=atoi(argv[2]);
 	
 	if (getcwd(cwd, sizeof(cwd)) != NULL){
-		strcat(cwd,"/Download");
+		strcat(cwd,"/Download/");
 		fprintf(stdout, "Current working dir: %s\n", cwd);
 	}
 	else
@@ -55,13 +55,18 @@ int main(int argc, char **argv)
 
 void str_cli(FILE *fp, int sockfd)
 {
+	char tmp[1024];
+
+	FILE *fp2;
+	int i,j,k;
 again:
-	write(sockfd, "ready", strlen ("ready"));
+
+	write(sockfd, "ready", strlen ("ready")+1);
 	char sendline[MAXLINE], recvline[MAXLINE];
 	if (read(sockfd, recvline, MAXLINE) == 0) {
 		printf("str_cli: server terminated prematurely\n");
 		exit(0);
-	}	
+	}
 	fputs(recvline, stdout);
 	while (fgets(sendline, MAXLINE, fp) != NULL) {
 		//printf("send string %s.%d",sendline,strlen(sendline));
@@ -74,7 +79,7 @@ again:
 				}
 				else if(!strcmp(recvline,"end")){
 					goto again;
-				}				
+				}
 				fputs(recvline, stdout);
 				write(sockfd, " ", 1);
 			}
@@ -88,17 +93,74 @@ again:
 		}
 		else if(!strcmp(sendline,"U\n")){
 			// to do
+
 			if(!strcmp(recvline,"end")){
 					goto again;
 				}				
 		}
 		else if(!strcmp(sendline,"D\n")){
 			// to do
+			if (read(sockfd, recvline, MAXLINE) == 0) {/* read ready signal*/
+					printf("str_cli: server terminated prematurely\n");
+					exit(0);
+			}
+			puts("Enter file name :");
+			fgets(sendline, MAXLINE, fp) ;
+			sendline[strlen(sendline)-1]='\0';
+			write(sockfd, sendline, strlen (sendline)+1);
+			puts("Save as :");
+			fgets(sendline, MAXLINE, fp) ;
+			sendline[strlen(sendline)-1]='\0';
+			strcpy(tmp, cwd);
+			strcat(tmp,sendline);
+			if((fp2 = fopen(tmp,"w"))!=NULL){
+				k=0;
+				while(1){
+					k++;
+					printf("%d\n",k);
+					if (read(sockfd, recvline, MAXLINE) == 0) {
+						printf("str_cli: server terminated prematurely\n");
+						exit(0);
+					}
+					if(!strcmp(recvline,"fperr")){
+						puts("file error");
+						goto again;
+					}
+					else if(!strcmp(recvline,"last")){
+						puts("QQ");
+						write(sockfd, " ", 2);
+						if (read(sockfd, recvline, MAXLINE) == 0) {
+							printf("str_cli: server terminated prematurely\n");
+							exit(0);
+						}
+						i = atoi(recvline);
+						puts(recvline);
+						write(sockfd, " ", 2);
+
+						if (read(sockfd, recvline, MAXLINE) == 0) {
+							printf("str_cli: server terminated prematurely\n");
+							exit(0);
+						}
+						puts(recvline);
+						fwrite(recvline, i, 1, fp2);
+						fclose(fp2);
+						puts(recvline);
+						write(sockfd, " ", 2);
+						break;
+					}
+					fwrite(recvline, MAXLINE, 1, fp2);
+					write(sockfd, " ", 2);
+					// to do
+				}
+			}
+			if (read(sockfd, recvline, MAXLINE) == 0) {
+				printf("str_cli: server terminated prematurely\n");
+				exit(0);
+			}
 			if(!strcmp(recvline,"end")){
 					goto again;
-				}				
-		}
-		
+			}
+		}		
 	}
 	printf("send string EOF\n");
 	sendline[0]=EOF;

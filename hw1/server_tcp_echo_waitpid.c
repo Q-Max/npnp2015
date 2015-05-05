@@ -10,6 +10,7 @@
 #include  <signal.h>  
 #include <sys/stat.h>/* mkdir */
 #include <sys/types.h>/* mkdir */
+#include <math.h> /* ceil*/
 
 #define LISTENQ 256
 #define MAXLINE 2048
@@ -75,6 +76,10 @@ int main(int argc, char **argv)
 	char buf[MAXLINE]; //MAXLINE is defined by user
 	char dst[100];
 	char path[1035];
+	char child_cwd[1024];
+	char down_process[1024];
+	int i,j,k,l;
+	strcpy(child_cwd,cwd);
 
 again:
 	while ( (n = read(sockfd, buf, MAXLINE)) > 0) {
@@ -89,7 +94,7 @@ again:
 			strcpy(dst, bin);
 			dst[strlen(dst)+1]='\0';
 			dst[strlen(dst)] = ' ';
-			strcat(dst, cwd);
+			strcat(dst,child_cwd);
 			strcat(dst, " -F");
 			puts(dst);
 			fp = popen(dst, "r");
@@ -99,7 +104,7 @@ again:
 			}
 			write(sockfd, listMsg, strlen(listMsg)+1);
 			/* Read the output a line at a time - output it. */
-			while (fgets(path, sizeof(path)-1, fp) != NULL) {
+			while ((fgets(path, sizeof(path)-1, fp)) != NULL) {
 				printf("%s,%lu",path,strlen(path));
 				write(sockfd, path, strlen(path)+1);
 				if( (n = read(sockfd, buf, MAXLINE))<0){
@@ -107,9 +112,7 @@ again:
 					printf("connection from %s, port %hu closed\n",inet_ntop(AF_INET, &( cliaddr.sin_addr), dst, INET_ADDRSTRLEN),ntohs(cliaddr.sin_port));
 					return;
 				}
-
 			}
-
 			/* close */
 			pclose(fp);
 			write(sockfd, "end", strlen("end")+1);
@@ -117,13 +120,86 @@ again:
 		}
 		else if(!strcmp(buf,"C\n")){
 			//to do
+			// //DIR* dir = opendir("mydir");
+			// //if (dir)
+			// //{
+			// 	/* Directory exists. */
+			// 	closedir(dir);
+			// }
+			// else if (ENOENT == errno)
+			// {
+			// 	/* Directory does not exist. */
+			// }
+			// else
+			// {
+			// 	/* opendir() failed for some other reason. */
+			// }
 
 			write(sockfd, "end", strlen("end")+1);
 			continue;
 		}
 		else if(!strcmp(buf,"D\n")){
 			//to do
-
+			write(sockfd, "ready", strlen("ready")+1);
+			if( (n = read(sockfd, buf, MAXLINE))<0){
+				printf("str_echo: read error\n");
+				printf("connection from %s, port %hu closed\n",inet_ntop(AF_INET, &( cliaddr.sin_addr), dst, INET_ADDRSTRLEN),ntohs(cliaddr.sin_port));
+				return;
+			}
+			strcpy(down_process,child_cwd);
+			down_process[strlen(down_process)+1]='\0';
+			down_process[strlen(down_process)] = '/';
+			strcat(down_process,buf);
+			if(!(fp=fopen(down_process,"r"))){
+				write(sockfd, "fperr", strlen("fperr")+1);
+				goto again;
+			}
+			fseek(fp, 0L, SEEK_END);
+			k=ftell(fp);
+			fseek(fp, 0L, SEEK_SET);
+			j=(int)(ceil((double)k/(double)MAXLINE));
+			i=0;
+			printf("%d,%d,%s\n",k,j,down_process);
+			while (!feof(fp)) {
+				
+				i++;
+				printf("%d\n",i);
+				if(i==j){
+					write(sockfd,"last", 5);
+					if( (n = read(sockfd, buf, MAXLINE))<0){
+						printf("str_echo: read error\n");
+						printf("connection from %s, port %hu closed\n",inet_ntop(AF_INET, &( cliaddr.sin_addr), dst, INET_ADDRSTRLEN),ntohs(cliaddr.sin_port));
+						return;
+					}
+					sprintf(dst,"%d",k%MAXLINE);
+					write(sockfd, dst, strlen(dst)+1);
+					if( (n = read(sockfd, buf, MAXLINE))<0){
+						printf("str_echo: read error\n");
+						printf("connection from %s, port %hu closed\n",inet_ntop(AF_INET, &( cliaddr.sin_addr), dst, INET_ADDRSTRLEN),ntohs(cliaddr.sin_port));
+						return;
+					}
+					fread(buf,2048,1,fp);
+					for(l=0;l<k%MAXLINE;l++)putchar(buf[l]);
+					write(sockfd, buf, k%MAXLINE);
+					if( (n = read(sockfd, buf, MAXLINE))<0){
+						printf("str_echo: read error\n");
+						printf("connection from %s, port %hu closed\n",inet_ntop(AF_INET, &( cliaddr.sin_addr), dst, INET_ADDRSTRLEN),ntohs(cliaddr.sin_port));
+						return;
+					}
+					fclose(fp);
+					puts("qq");
+					break;
+				}
+				else {
+					fread(buf,2048,1,fp);	
+					write(sockfd, buf, MAXLINE);
+					if( (n = read(sockfd, buf, MAXLINE))<0){
+						printf("str_echo: read error\n");
+						printf("connection from %s, port %hu closed\n",inet_ntop(AF_INET, &( cliaddr.sin_addr), dst, INET_ADDRSTRLEN),ntohs(cliaddr.sin_port));
+						return;
+					}
+				}
+			}
 			write(sockfd, "end", strlen("end")+1);
 			continue;
 		}
