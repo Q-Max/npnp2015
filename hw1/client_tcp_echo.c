@@ -116,14 +116,17 @@ again:
 				printf("str_cli: server terminated prematurely\n");
 				exit(0);
 			}
-			puts("Enter file directory:");
+			puts("Enter file name:");
 			fgets(sendline, MAXLINE, fp) ;
 			sendline[strlen(sendline)-1]='\0';
-			if((fp2 = fopen(sendline,"r"))==NULL){
+			fp2 = fopen(sendline,"r");
+			if(!fp2){
 				write(sockfd, "error", strlen("error")+1);
+				puts("qq2");
 				goto again;
 			}
 			else{
+				puts("qq");
 				write(sockfd, sendline, strlen(sendline)+1);
 				if (read(sockfd, recvline, MAXLINE) == 0) {/* read ready signal*/
 					printf("str_cli: server terminated prematurely\n");
@@ -133,10 +136,11 @@ again:
 					goto again;
 				}
 				fseek(fp2, 0L, SEEK_END);
-				k=ftell(fp);
+				k=ftell(fp2);
 				fseek(fp2, 0L, SEEK_SET);
 				j=(int)(ceil((double)k/(double)MAXLINE));
 				i=0;
+				puts("qq");
 				//printf("%d,%d,%s\n",k,j,process_cwd);
 				while (!feof(fp2)) {
 					
