@@ -85,9 +85,7 @@ int main(int argc, char **argv)
 
 again:
 	while ( (n = read(sockfd, buf, MAXLINE)) > 0) {
-		printf("%sstrlen : %lu\n",buf,strlen(buf));
 		if(!strcmp(buf,"ready")){
-			printf("%s\n",buf);
 			printf("client from %s, port %hu ready\n",inet_ntop(AF_INET, &( cliaddr.sin_addr), dst, INET_ADDRSTRLEN),ntohs(cliaddr.sin_port));
 			write(sockfd, welMsg, strlen(welMsg)+1);
 			continue;
@@ -98,7 +96,6 @@ again:
 			dst[strlen(dst)] = ' ';
 			strcat(dst,child_cwd);
 			strcat(dst, " -F");
-			puts(dst);
 			fp = popen(dst, "r");
 			if (fp == NULL) {
 				printf("Failed to run command\n" );
@@ -112,7 +109,6 @@ again:
 			}
 			/* Read the output a line at a time - output it. */
 			while ((fgets(path, sizeof(path)-1, fp)) != NULL) {
-				printf("%s,%lu",path,strlen(path));
 				write(sockfd, path, strlen(path)+1);
 				if( (n = read(sockfd, buf, MAXLINE))<0){
 					printf("str_echo: read error\n");
@@ -166,7 +162,6 @@ again:
 				strcat(process_cwd,"/");
 				strcat(process_cwd,buf);
 			}
-			
 			dir = opendir(process_cwd);
 			if (dir)
 			{
@@ -214,11 +209,8 @@ again:
 			fseek(fp, 0L, SEEK_SET);
 			j=(int)(ceil((double)k/(double)MAXLINE));
 			i=0;
-			printf("%d,%d,%s\n",k,j,process_cwd);
 			while (!feof(fp)) {
-				
 				i++;
-				printf("%d\n",i);
 				if(i==j){
 					write(sockfd,"last", 5);
 					if( (n = read(sockfd, buf, MAXLINE))<0){
@@ -234,7 +226,6 @@ again:
 						return;
 					}
 					fread(buf,MAXLINE,1,fp);
-					for(l=0;l<k%MAXLINE;l++)putchar(buf[l]);
 					write(sockfd, buf, k%MAXLINE);
 					if( (n = read(sockfd, buf, MAXLINE))<0){
 						printf("str_echo: read error\n");
@@ -242,7 +233,6 @@ again:
 						return;
 					}
 					fclose(fp);
-					puts("qq");
 					break;
 				}
 				else {
@@ -284,21 +274,17 @@ again:
 					exit(0);
 				}
 				if(!strcmp(buf,"last")){
-					puts("QQ");
 					write(sockfd, " ", 2);
 					if (read(sockfd, buf, MAXLINE) == 0) {
 						printf("str_cli: server terminated prematurely\n");
 						exit(0);
 					}
 					i = atoi(buf);
-					puts(buf);
 					write(sockfd, " ", 2);
-
 					if (read(sockfd, buf, MAXLINE) == 0) {
 						printf("str_cli: server terminated prematurely\n");
 						exit(0);
 					}
-					puts(buf);
 					fwrite(buf, i, 1, fp);
 					fclose(fp);
 					//puts(buf);
