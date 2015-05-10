@@ -118,6 +118,7 @@ again:
 			sendline[strlen(sendline)-1]='\0';
 			fp2 = fopen(sendline,"r");
 			if(!fp2){
+				puts("file error");
 				write(sockfd, "error", strlen("error")+1);
 				goto again;
 			}
