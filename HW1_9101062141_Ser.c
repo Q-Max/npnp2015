@@ -306,7 +306,7 @@ again:
 	}
 	if (n < 0 && errno == EINTR) /* interrupted by a signal before any data was read*/
 		goto again; //ignore EINTR
-	else if (n < 0)	{
+	else if (n <=0)	{
 		printf("str_echo: read error\n");
 		printf("connection from %s, port %hu closed\n",inet_ntop(AF_INET, &( cliaddr.sin_addr), dst, INET_ADDRSTRLEN),ntohs(cliaddr.sin_port));
 	}
