@@ -49,11 +49,10 @@ void dg_cli(FILE *fp, int sockfd, struct sockaddr *pservaddr, socklen_t servlen)
 	//printf("%s %d\n",recvline,strlen(recvline));
 	fputs(recvline, stdout);
 	while (fgets(sendline, MAXLINE, fp) != NULL) {
-		sendto(sockfd, sendline, strlen(sendline), 0, pservaddr, servlen);
-		if((n = recvfrom(sockfd, recvline, MAXLINE, 0, NULL, NULL)) < 0){
-			printf("timeout\n");
-			continue;
-		}
+		//printf("%d\n",sizeof(struct sockaddr_in));
+		sendline[strlen(sendline)-1] = '\0';
+		sendto(sockfd, sendline, strlen(sendline)+1, 0, pservaddr, servlen);
+		n = recvfrom(sockfd, recvline, MAXLINE, 0, NULL, NULL)
 		recvline[n] = '\0';
 		/* null terminate */
 		fputs(recvline, stdout);
