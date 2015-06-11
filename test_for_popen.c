@@ -21,7 +21,7 @@ int main( int argc, char *argv[] )
   }
 
   /* Open the command for reading. */
-  fp = popen("/bin/ls /home/q-max/np/ -F", "r");
+  fp = popen("/bin/ls /home/q-max/np/ -Al", "r");
   if (fp == NULL) {
     printf("Failed to run command\n" );
     exit(1);

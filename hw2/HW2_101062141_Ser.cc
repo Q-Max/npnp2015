@@ -13,6 +13,7 @@
 #include <iostream>
 #include <string>
 #include <map>
+#include <pthread.h>
 
 #define LISTENQ 256
 #define MAXLINE 4096
