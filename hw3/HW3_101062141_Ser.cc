@@ -19,7 +19,7 @@
 #define LISTENQ 256
 #define MAXLINE 4096
 #define WELCOME "*************Welcome*****************\n[R]egister\t[L]ogin\n"
-#define splitline "************************************************************"
+#define splitline "************************************************************\n"
 
 #define CONNECT 0
 #define regist 1
@@ -36,6 +36,7 @@
 #define FILE_GET_FILES 12
 #define FILE_UPDATE_DATA_PROCESS_DONE 13
 #define FILE_DOWNLOAD_1 14
+#define FILE_GO_DOWNLOAD 15
 
 void str_echo(struct myDefStruct* arg);
 static void *doit(void *arg);
@@ -51,8 +52,8 @@ struct file_at_client{
 	std::string name;
 	struct sockaddr_in servaddr;
 };
-account accounts[100000];
-file_at_client files[100000];
+account accounts[1000];
+file_at_client files[1000];
 std::map<std::string, int> client_state;
 std::map<std::string, int> client_userid;
 std::map<std::string, int> client_account_index;
@@ -132,6 +133,7 @@ int main(int argc, char **argv)
 	//char buf[MAXLINE]; //MAXLINE is defined by user
 	char temp[MAXLINE];
 	char dst[100];
+	int file_index_in_files;
 	char *ptr;
 	std::string  temp1, temp2;
 	int j, k;
@@ -139,7 +141,7 @@ int main(int argc, char **argv)
 	std::string sock;
 again:
 	while ( (n = read(sockfd, buf, MAXLINE)) > 0) {
-		printf("connection from %s, port %hu\n",inet_ntop(AF_INET, &( servaddr.sin_addr), dst, INET_ADDRSTRLEN),ntohs(servaddr.sin_port));
+		// printf("connection from %s, port %hu\n",inet_ntop(AF_INET, &( servaddr.sin_addr), dst, INET_ADDRSTRLEN),ntohs(servaddr.sin_port));
 		strncpy(temp,(char*)&servaddr,sizeof(sockaddr_in));
 		temp[sizeof(sockaddr_in)] = '\0';
 		sock = std::string((char*)&servaddr, sizeof(sockaddr_in));	
@@ -220,9 +222,9 @@ again:
 				continue;
 			}
 			temp2 = ptr;
-			std::cout<<temp1<<temp2<<'\n';
+			// std::cout<<temp1<<temp2<<'\n';
 			for(k = 0,j=0;k<id_index;k++){
-				std::cout<<accounts[k].name<<accounts[k].pw<<'\n';
+				// std::cout<<accounts[k].name<<accounts[k].pw<<'\n';
 				if(!accounts[k].name.compare(temp1)&&!accounts[k].pw.compare(temp2)&&accounts[k].use==1){
 					strcpy(buf , "Login succeed");
 					client_state[sock] = lobby;
@@ -261,7 +263,7 @@ again:
 		}
 		else if(client_state[sock] == lobby2&&!strcmp(buf,"L")){
 			//puts("QQ");
-			buf2[0] = NORMAL;
+			buf2[0] = EXIT;
 			client_state[sock] = logout;
 			client_state.erase(sock);
 			client_userid.erase(sock);
@@ -311,7 +313,7 @@ again:
 		else if(client_state[sock] == file_c&&!strcmp(buf,"D")){
 			buf2[0] = FILE_GET_FILES;
 			for(int iii=0;iii<file_index;iii++){
-				printf("%s belong to %s\n",files[iii].name.c_str(),accounts[files[iii].belong_to_client_account_index].name.c_str());
+				// printf("%s belong to %s\n",files[iii].name.c_str(),accounts[files[iii].belong_to_client_account_index].name.c_str());
 				
 				sprintf(buf,"%s belong to %s\n",files[iii].name.c_str(),accounts[files[iii].belong_to_client_account_index].name.c_str());
 				write(sockfd, buf2, strlen(buf)+2);
@@ -324,6 +326,29 @@ again:
 			buf2[0] = NORMAL;
 			strcpy(buf,splitline);
 			write(sockfd, buf2, strlen(buf)+2);
+			read(sockfd, buf2, 1);
+			buf2[0] = NORMAL;
+			do{
+				strcpy(buf,"Please enter the filename you want to download?\n");
+				write(sockfd, buf2, strlen(buf)+2);
+				read(sockfd, buf2, MAXLINE);
+				flag = 0;
+				printf("%s %lu\n",buf2,strlen(buf2));
+				for(int iii=0;iii<file_index;iii++){
+					if(!strcmp(files[iii].name.c_str(),buf2)){
+						file_index_in_files = iii;
+						flag = 1;	
+						break;
+					}
+				}
+			}
+			while(!flag);
+			//call the client to prepare
+			buf2[0] = FILE_GO_DOWNLOAD;
+			strncpy(buf, (char*)&(files[file_index_in_files].servaddr), sizeof(sockaddr_in));
+			strcpy(buf+ sizeof(sockaddr_in), files[file_index_in_files].name.c_str());
+			write(sockfd, buf2, MAXLINE);
+			client_state[sock] = lobby;
 			//todo
 			continue;
 		}
