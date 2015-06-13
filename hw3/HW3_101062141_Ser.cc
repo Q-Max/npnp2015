@@ -19,6 +19,7 @@
 #define LISTENQ 256
 #define MAXLINE 4096
 #define WELCOME "*************Welcome*****************\n[R]egister\t[L]ogin\n"
+#define splitline "************************************************************"
 
 #define CONNECT 0
 #define regist 1
@@ -26,25 +27,37 @@
 #define lobby 3
 #define lobby2 4
 #define logout 5
-#define ack 6
+#define ack_QQ 6
 #define file_c 7
 #define FILE_UPDATE_DATA 8
 #define NORMAL 9
 #define EXIT 10
+#define FILE_UPDATE_DATA_PROCESS 11
+#define FILE_GET_FILES 12
+#define FILE_UPDATE_DATA_PROCESS_DONE 13
+#define FILE_DOWNLOAD_1 14
 
- void str_echo(struct myDefStruct* arg);
- static void *doit(void *arg);
+void str_echo(struct myDefStruct* arg);
+static void *doit(void *arg);
 struct account{
 	unsigned int id;
 	std::string name;
 	std::string pw;
 	int use;
 };
-account accounts [100000];
+struct file_at_client{
+	unsigned int size;
+	unsigned int belong_to_client_account_index;
+	std::string name;
+	struct sockaddr_in servaddr;
+};
+account accounts[100000];
+file_at_client files[100000];
 std::map<std::string, int> client_state;
 std::map<std::string, int> client_userid;
 std::map<std::string, int> client_account_index;
 int id_index;
+int file_index;
 #define LS "/bin/ls"
 char cwd[1024];
 struct myDefStruct
@@ -66,6 +79,7 @@ int main(int argc, char **argv)
 	struct sockaddr_in cliaddr, servaddr;
 	listenfd = socket (AF_INET, SOCK_STREAM, 0);
 	id_index = 0;
+	file_index = 0;
 	char dst[100];
 	bzero(&servaddr, sizeof(servaddr));
 	servaddr.sin_family = AF_INET;
@@ -260,29 +274,56 @@ again:
 			//puts("QQ");
 			buf2[0] = NORMAL;
 			client_state[sock] = file_c;
-			sprintf(buf,"[U]pdate file information [D]ownload others' file\n",(accounts[client_userid[sock]].name).c_str());
+			sprintf(buf,"[U]pdate file information [D]ownload others' file\n");
 			write(sockfd, buf2, strlen(buf)+2);
 			continue;
 		}
 		else if(client_state[sock] == file_c&&!strcmp(buf,"U")){
 			buf2[0] = FILE_UPDATE_DATA;
-			client_state[sock] = FILE_UPDATE_DATA;
+			client_state[sock] = FILE_UPDATE_DATA_PROCESS;
 			write(sockfd, buf2, 1);
 			
 			//todo
 			continue;
 		}
-		else if(client_state[sock] ==FILE_UPDATE_DATA){
-			buf2[0] = FILE_UPDATE_DATA;
-			client_state[sock] = FILE_UPDATE_DATA;
-			write(sockfd, buf2, 1);
-			
-			//todo
-			continue;
+		else if(client_state[sock] == FILE_UPDATE_DATA_PROCESS){
+			if(buf[0]==FILE_UPDATE_DATA_PROCESS){
+				//puts(buf+1);
+				sscanf(buf+1,"%s %u",dst,&files[file_index].size);
+				files[file_index].name = std::string(dst);
+				files[file_index].servaddr = servaddr;
+				files[file_index].belong_to_client_account_index = client_account_index[sock];
+				std::cout<<files[file_index].name;
+				printf(" belong to %s\n",accounts[client_account_index[sock]].name.c_str());
+				file_index++;
+				buf2[0] = ack_QQ;
+				write(sockfd, buf2, 1);
+				continue;
+			}
+			else if(buf[0]==FILE_UPDATE_DATA_PROCESS_DONE){
+				client_state[sock] = lobby;
+				buf2[0] = NORMAL;
+				write(sockfd, buf2, 1);				
+				//todo				
+				continue;
+			}
 		}
 		else if(client_state[sock] == file_c&&!strcmp(buf,"D")){
-			
-			
+			buf2[0] = FILE_GET_FILES;
+			for(int iii=0;iii<file_index;iii++){
+				printf("%s belong to %s\n",files[iii].name.c_str(),accounts[files[iii].belong_to_client_account_index].name.c_str());
+				
+				sprintf(buf,"%s belong to %s\n",files[iii].name.c_str(),accounts[files[iii].belong_to_client_account_index].name.c_str());
+				write(sockfd, buf2, strlen(buf)+2);
+				read(sockfd, buf, 1);
+				if(buf[0]!=ack_QQ)
+					break;
+				
+			}
+			client_state[sock] = FILE_DOWNLOAD_1;
+			buf2[0] = NORMAL;
+			strcpy(buf,splitline);
+			write(sockfd, buf2, strlen(buf)+2);
 			//todo
 			continue;
 		}

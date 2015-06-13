@@ -17,11 +17,15 @@
 #define lobby 3
 #define lobby2 4
 #define logout 5
-#define ack 6
+#define ack_QQ 6
 #define file_c 7
 #define FILE_UPDATE_DATA 8
 #define NORMAL 9
 #define EXIT 10
+#define FILE_UPDATE_DATA_PROCESS 11
+#define FILE_GET_FILES 12
+#define FILE_UPDATE_DATA_PROCESS_DONE 13
+#define FILE_DOWNLOAD_1 14
 
 #define MAXLINE 4096
 
@@ -29,6 +33,7 @@ char bin[] = "/bin/ls";
 char cwd[1024];
 
 void str_cli(FILE *fp, int sockfd);
+void file_check(int sockfd);
 int main(int argc, char **argv)
 {
 	int i;
@@ -67,9 +72,20 @@ void str_cli(FILE *fp, int sockfd)
 	while (read(sockfd, recvline, MAXLINE)) {
 		if(recvline[0]==EXIT)
 			return;
-		if(recvline[0]==FILE_UPDATE_DATA)
+		else if(recvline[0]==FILE_UPDATE_DATA)
 		{
-
+			puts("QQ");
+			file_check(sockfd);
+			continue;
+		}
+		else if(recvline[0]==FILE_GET_FILES)
+		{
+			puts("QQ");
+			
+			fputs(recvline+1, stdout);
+			sendline[0] = ack_QQ;
+			write(sockfd, sendline, 1);
+			continue;
 		}
 		fputs(recvline+1, stdout);
 		if(fgets(sendline, MAXLINE, fp) != NULL){
@@ -88,14 +104,15 @@ void str_cli(FILE *fp, int sockfd)
 	write(sockfd, sendline, strlen (sendline));
 }
 
-void file_check(){
-	char dst[200];
+void file_check(int sockfd){
+	char dst[200],temp[200];
 	strcpy(dst, bin);
 	dst[strlen(dst)+1]='\0';
 	dst[strlen(dst)] = ' ';
 	strcat(dst, cwd);
 	strcat(dst, " -Al");
-	fp = popen(dst, "r");
+	char size[10],name[30];
+	FILE *fp = popen(dst, "r");
 	if (fp == NULL) {
 		printf("Failed to run command\n" );
 		return;
@@ -105,8 +122,22 @@ void file_check(){
 			continue;
 		if(dst[0]=='d')
 			continue;
+		else{
+			sscanf(dst,"%*s %*s %*s %*s %s %*s %*s %*s %s",size,name);
+			sprintf(temp+1,"%s %s\n",name,size);
+			printf("%s %s\n",name,size);
+			temp[0] = FILE_UPDATE_DATA_PROCESS;
+			write(sockfd,temp,strlen(temp)+2);
+			read(sockfd, temp, 1);
+			if(temp[0]!=ack_QQ)
+				return;
+		}
 		
 	}
-
+	temp[0] = FILE_UPDATE_DATA_PROCESS_DONE;
+	write(sockfd, temp, 1);
+	read(sockfd, temp, 1);
+	write(sockfd, temp, 1);
+	return;
 
 }
